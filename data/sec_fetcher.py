@@ -118,8 +118,14 @@ def get_financials(ticker: str) -> dict:
     # Total Assets
     assets = extract_metric(facts, "Assets")
 
-    # Cash
-    cash = extract_metric(facts, "CashAndCashEquivalentsAtCarryingValue")
+    # Cash — try multiple concepts, broadest first
+    cash = extract_metric(facts, "CashCashEquivalentsAndShortTermInvestments")
+    if cash.empty:
+        cash = extract_metric(facts, "CashAndCashEquivalentsAndShortTermInvestments")
+    if cash.empty:
+        cash = extract_metric(facts, "CashAndCashEquivalentsAtCarryingValue")
+    if cash.empty:
+        cash = extract_metric(facts, "CashEquivalentsAtCarryingValue")
 
     def latest_annual(df):
         """Get the most recent annual (10-K) figure."""
@@ -183,6 +189,7 @@ def get_financials(ticker: str) -> dict:
         "gp_annual":      annual_series(gp),
         "op_annual":      annual_series(op),
         "rd_annual":      annual_series(rd),
+        "cash_annual":    annual_series(cash) if not annual_series(cash).empty else quarterly_series(cash, 8),
         "eps_quarterly":  quarterly_series(eps),
     }
 
