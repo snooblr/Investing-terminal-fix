@@ -136,18 +136,18 @@ def get_financials(ticker: str) -> dict:
             return None
         return annual.iloc[0]
 
-    def quarterly_series(df, n=40):
+    def quarterly_series(df, n=8):
         """Get last N quarterly figures."""
         if df.empty:
             return pd.DataFrame()
         q = df[df["form"] == "10-Q"].drop_duplicates(subset=["end"]).head(n)
         return q[["end", "val"]].sort_values("end")
 
-    def annual_series(df, n=4):
-        """Get last N annual figures."""
+    def annual_series(df, n=15):
+        """Get last N annual figures — includes older form types for pre-2009 data."""
         if df.empty:
             return pd.DataFrame()
-        a = df[df["form"] == "10-K"].drop_duplicates(subset=["end"]).head(n)
+        a = df[df["form"].isin(["10-K","10-K405","10-KSB"])].drop_duplicates(subset=["end"]).head(n)
         return a[["end", "val"]].sort_values("end")
 
     # Latest filing info
@@ -187,9 +187,12 @@ def get_financials(ticker: str) -> dict:
         "net_annual":     annual_series(net),
         "net_quarterly":  quarterly_series(net),
         "gp_annual":      annual_series(gp),
+        "gp_quarterly":   quarterly_series(gp),
         "op_annual":      annual_series(op),
         "rd_annual":      annual_series(rd),
+        "rd_quarterly":   quarterly_series(rd),
         "cash_annual":    annual_series(cash) if not annual_series(cash).empty else quarterly_series(cash, 8),
+        "cash_quarterly": quarterly_series(cash),
         "eps_quarterly":  quarterly_series(eps),
     }
 
