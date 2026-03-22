@@ -59,6 +59,9 @@ st.markdown("""
   .tag-down { color:#8b2020; border-color:#8b2020; background:#f0e8e8; }
   .exp-wrap { background:#e8e2d6; border-radius:4px; height:10px; width:100%; }
   .exp-bar  { height:10px; border-radius:4px; background:#1a1a1a; }
+  .stSelectbox div[data-baseweb="select"] span { color:#111111 !important; }
+  .stSelectbox div[data-baseweb="select"] { background-color:#ffffff !important; }
+  .stSelectbox label { color:#111111 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -353,7 +356,7 @@ def render_dividend_tracker(port_dict):
 with st.sidebar:
     st.markdown("## 📈 Terminal")
     page = st.radio("", ["Chart", "My Portfolio", "Dad's Portfolio",
-                         "Watchlist", "Backtest", "Optimiser"],
+                         "Watchlist", "Backtest", "Optimiser", "Research"],
                     label_visibility="collapsed")
     st.markdown("---")
     rf_rate = st.slider("Risk-free rate (%)", 0.0, 8.0, 4.0, 0.25) / 100
@@ -693,3 +696,106 @@ elif page == "Optimiser":
                     corr = correlation_matrix(res["tickers"], period=opt_period)
                 if not corr.empty:
                     st.plotly_chart(correlation_heatmap(corr), use_container_width=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  PAGE: RESEARCH — Live SEC EDGAR Fundamentals
+# ═══════════════════════════════════════════════════════════════════════════════
+
+elif page == "Research":
+    from data.sec_fetcher import get_financials, get_recent_filings, fmt_b
+    from charts.research_plots import (revenue_bar, net_income_bar, margin_trend,
+                                        eps_chart, rd_bar, revenue_vs_income)
+
+    st.markdown("# Research")
+    st.caption("Live fundamental data pulled directly from SEC EDGAR filings — updates automatically when new 10-K or 10-Q is filed.")
+
+    # Ticker selector
+    research_tickers = list(PORTFOLIO.keys()) + ["MSFT", "AMZN", "GOOGL", "META"]
+    research_tickers = [t for t in research_tickers if t not in ["STRK", "MSTR"]]
+
+    c1, c2 = st.columns([2, 1])
+    with c1:
+        sel_ticker = st.selectbox("Select Company", research_tickers, key="res_ticker")
+    with c2:
+        period = st.radio("Period", ["Annual", "Quarterly"], horizontal=True, key="res_period")
+
+    with st.spinner(f"Fetching SEC filings for {sel_ticker}..."):
+        fin = get_financials(sel_ticker)
+        filings = get_recent_filings(sel_ticker)
+
+    if not fin:
+        st.error(f"Could not fetch SEC data for {sel_ticker}. Try another ticker.")
+    else:
+        # Header
+        st.markdown(f"## {fin['name']}")
+        if fin.get("filing_date"):
+            st.caption(f"Latest 10-K filed: {fin['filing_date']} · Source: SEC EDGAR · Auto-updates on new filing")
+
+        st.markdown("---")
+
+        # Key metrics
+        st.markdown("### Key Financials")
+        m1, m2, m3, m4, m5 = st.columns(5)
+        m1.metric("Revenue",      fmt_b(fin.get("revenue")))
+        m2.metric("Net Income",   fmt_b(fin.get("net_income")))
+        m3.metric("Gross Profit", fmt_b(fin.get("gross_profit")))
+        m4.metric("Gross Margin", f"{fin['gross_margin']:.1f}%" if fin.get("gross_margin") else "—")
+        m5.metric("Cash",         fmt_b(fin.get("cash")))
+
+        st.markdown("---")
+
+        # Charts — row 1
+        c1, c2 = st.columns(2)
+        with c1:
+            rev_df = fin["rev_annual"] if period == "Annual" else fin["rev_quarterly"]
+            if not rev_df.empty:
+                st.plotly_chart(revenue_bar(rev_df, sel_ticker, period), use_container_width=True)
+            else:
+                st.info("Revenue data not available.")
+
+        with c2:
+            if not fin["net_annual"].empty:
+                st.plotly_chart(net_income_bar(fin["net_annual"], sel_ticker), use_container_width=True)
+            else:
+                st.info("Net income data not available.")
+
+        # Charts — row 2
+        c3, c4 = st.columns(2)
+        with c3:
+            if not fin["rev_annual"].empty and not fin["gp_annual"].empty:
+                st.plotly_chart(margin_trend(fin["rev_annual"], fin["gp_annual"], sel_ticker), use_container_width=True)
+            else:
+                st.info("Margin data not available.")
+
+        with c4:
+            if not fin["eps_quarterly"].empty:
+                st.plotly_chart(eps_chart(fin["eps_quarterly"], sel_ticker), use_container_width=True)
+            else:
+                st.info("EPS data not available.")
+
+        # Charts — row 3
+        c5, c6 = st.columns(2)
+        with c5:
+            if not fin["rev_annual"].empty and not fin["net_annual"].empty:
+                st.plotly_chart(revenue_vs_income(fin["rev_annual"], fin["net_annual"], sel_ticker), use_container_width=True)
+        with c6:
+            if not fin["rd_annual"].empty:
+                st.plotly_chart(rd_bar(fin["rd_annual"], sel_ticker), use_container_width=True)
+            else:
+                st.info("R&D data not available.")
+
+        # Recent filings table
+        st.markdown("---")
+        st.markdown("### Recent SEC Filings")
+        if filings:
+            for f in filings:
+                col1, col2, col3 = st.columns([1, 2, 2])
+                col1.markdown(f"**{f['form']}**")
+                col2.markdown(f"{f['date']}")
+                col3.markdown(f"[View on EDGAR ↗]({f['url']})")
+        else:
+            st.info("No recent filings found.")
+
+        st.markdown("---")
+        st.caption("Data sourced directly from SEC EDGAR XBRL API · Free, no API key required · Updates within hours of new filing · Not financial advice")
