@@ -703,109 +703,130 @@ elif page == "Optimiser":
 # ═══════════════════════════════════════════════════════════════════════════════
 
 elif page == "Research":
-    from data.sec_fetcher import get_financials, get_recent_filings
-    from charts.research_plots import (fmt_b, revenue_bar, net_income_bar, margin_trend,
-                                        eps_chart, rd_bar, revenue_vs_income, cash_bar)
+    from data.sec_fetcher import get_financials, get_recent_filings, fmt_b
+    from charts.research_plots import (
+        revenue_bar, net_income_bar, margin_trend, eps_chart, rd_bar,
+        revenue_vs_income, cash_bar, fcf_bar, growth_bar, peer_bar, margin_stack
+    )
 
     st.markdown("# Research")
-    st.caption("Live fundamental data pulled directly from SEC EDGAR filings — updates automatically when new 10-K or 10-Q is filed.")
+    st.caption("Live fundamental data from SEC EDGAR — auto-updates on new 10-K/10-Q filing.")
 
-    # Ticker selector
-    research_tickers = list(PORTFOLIO.keys()) + ["MSFT", "AMZN", "GOOGL", "META"]
-    research_tickers = [t for t in research_tickers if t not in ["STRK", "MSTR"]]
+    # Controls
+    research_tickers = [t for t in list(PORTFOLIO.keys()) + ["MSFT","AMZN","GOOGL","META","AMD","INTC","QCOM"]
+                        if t not in ["STRK","MSTR"]]
+    peer_map = {
+        "NVDA": ["NVDA","AMD","INTC","QCOM"],
+        "TSLA": ["TSLA","AMZN","MSFT","GOOGL"],
+        "AAPL": ["AAPL","MSFT","GOOGL","META"],
+        "MSFT": ["MSFT","AAPL","GOOGL","META"],
+        "AMZN": ["AMZN","MSFT","GOOGL","META"],
+    }
 
-    c1, c2 = st.columns([2, 1])
+    c1, c2, c3 = st.columns([2, 1, 1])
     with c1:
         sel_ticker = st.selectbox("Select Company", research_tickers, key="res_ticker")
     with c2:
-        period = st.radio("Period", ["Annual", "Quarterly"], horizontal=True, key="res_period")
+        period = st.radio("Period", ["Annual","Quarterly"], horizontal=True, key="res_period")
+    with c3:
+        show_peers = st.checkbox("Show Peer Comparison", value=True)
 
     with st.spinner(f"Fetching SEC filings for {sel_ticker}..."):
-        fin = get_financials(sel_ticker)
+        fin     = get_financials(sel_ticker)
         filings = get_recent_filings(sel_ticker)
 
     if not fin:
-        st.error(f"Could not fetch SEC data for {sel_ticker}. Try another ticker.")
+        st.error(f"Could not fetch SEC data for {sel_ticker}.")
     else:
-        # Header
         st.markdown(f"## {fin['name']}")
         if fin.get("filing_date"):
-            st.caption(f"Latest 10-K filed: {fin['filing_date']} · Source: SEC EDGAR · Auto-updates on new filing")
+            st.caption(f"Latest 10-K filed: {fin['filing_date']} · SEC EDGAR · Auto-updates on new filing")
 
         st.markdown("---")
 
-        # Key metrics
+        # ── Key metrics strip ─────────────────────────────────────────────────
         st.markdown("### Key Financials")
-        m1, m2, m3, m4, m5 = st.columns(5)
-        m1.metric("Revenue",      fmt_b(fin.get("revenue")))
-        m2.metric("Net Income",   fmt_b(fin.get("net_income")))
-        m3.metric("Gross Profit", fmt_b(fin.get("gross_profit")))
-        m4.metric("Gross Margin", f"{fin['gross_margin']:.1f}%" if fin.get("gross_margin") else "—")
-        m5.metric("Cash",         fmt_b(fin.get("cash")))
+        m1,m2,m3,m4,m5,m6,m7 = st.columns(7)
+        m1.metric("Revenue",       fmt_b(fin.get("revenue")))
+        m2.metric("Net Income",    fmt_b(fin.get("net_income")))
+        m3.metric("Free Cash Flow",fmt_b(fin.get("fcf")))
+        m4.metric("Gross Margin",  f"{fin['gross_margin']:.1f}%" if fin.get("gross_margin") else "—")
+        m5.metric("Op. Margin",    f"{fin['op_margin']:.1f}%"    if fin.get("op_margin")    else "—")
+        m6.metric("Net Margin",    f"{fin['net_margin']:.1f}%"   if fin.get("net_margin")   else "—")
+        m7.metric("Cash",          fmt_b(fin.get("cash")))
 
         st.markdown("---")
 
-        # Charts — row 1
+        # ── Helper to pick annual vs quarterly ───────────────────────────────
+        def pick(annual_key, quarterly_key):
+            if period == "Annual":
+                return fin.get(annual_key, pd.DataFrame())
+            return fin.get(quarterly_key, fin.get(annual_key, pd.DataFrame()))
+
+        # ── Row 1: Revenue + Net Income ───────────────────────────────────────
         c1, c2 = st.columns(2)
         with c1:
-            rev_df = fin["rev_annual"] if period == "Annual" else fin["rev_quarterly"]
-            if not rev_df.empty:
-                st.plotly_chart(revenue_bar(rev_df, sel_ticker, period), use_container_width=True)
-            else:
-                st.info("Revenue data not available.")
-
+            st.plotly_chart(revenue_bar(pick("rev_annual","rev_quarterly"), sel_ticker, period), use_container_width=True)
         with c2:
-            net_df = fin["net_annual"] if period == "Annual" else fin["net_quarterly"]
-            if not net_df.empty:
-                st.plotly_chart(net_income_bar(net_df, sel_ticker), use_container_width=True)
-            else:
-                st.info("Net income data not available.")
+            st.plotly_chart(net_income_bar(pick("net_annual","net_quarterly"), sel_ticker), use_container_width=True)
 
-        # Charts — row 2
+        # ── Row 2: FCF + Revenue Growth ───────────────────────────────────────
         c3, c4 = st.columns(2)
         with c3:
-            rev_df2 = fin["rev_annual"] if period == "Annual" else fin["rev_quarterly"]
-            gp_df   = fin["gp_annual"]  if period == "Annual" else fin["gp_quarterly"]
-            if not rev_df2.empty and not gp_df.empty:
-                st.plotly_chart(margin_trend(rev_df2, gp_df, sel_ticker), use_container_width=True)
-            else:
-                st.info("Margin data not available.")
-
+            st.plotly_chart(fcf_bar(fin.get("fcf_annual", pd.DataFrame()), sel_ticker), use_container_width=True)
         with c4:
-            if not fin["eps_quarterly"].empty:
-                st.plotly_chart(eps_chart(fin["eps_quarterly"], sel_ticker), use_container_width=True)
-            else:
-                st.info("EPS data not available.")
+            st.plotly_chart(growth_bar(pick("rev_growth_annual","rev_growth_quarterly"), sel_ticker, period), use_container_width=True)
 
-        # Charts — row 3
+        # ── Row 3: Margin stack + EPS ─────────────────────────────────────────
         c5, c6 = st.columns(2)
         with c5:
-            rev_df3 = fin["rev_annual"] if period == "Annual" else fin["rev_quarterly"]
-            net_df2 = fin["net_annual"] if period == "Annual" else fin["net_quarterly"]
-            if not rev_df3.empty and not net_df2.empty:
-                st.plotly_chart(revenue_vs_income(rev_df3, net_df2, sel_ticker), use_container_width=True)
+            st.plotly_chart(margin_stack(fin, sel_ticker), use_container_width=True)
         with c6:
-            rd_df = fin["rd_annual"] if period == "Annual" else fin.get("rd_quarterly", fin["rd_annual"])
-            if not rd_df.empty:
-                st.plotly_chart(rd_bar(rd_df, sel_ticker), use_container_width=True)
-            else:
-                st.info("R&D data not available.")
+            st.plotly_chart(eps_chart(fin.get("eps_quarterly", pd.DataFrame()), sel_ticker), use_container_width=True)
 
-        # Row 4 — Cash
+        # ── Row 4: R&D + Cash ─────────────────────────────────────────────────
         c7, c8 = st.columns(2)
         with c7:
-            cash_df = fin["cash_annual"] if period == "Annual" else fin.get("cash_quarterly", fin["cash_annual"])
-            if cash_df is not None and not cash_df.empty:
-                st.plotly_chart(cash_bar(cash_df, sel_ticker), use_container_width=True)
-            else:
-                st.info("Cash data not available.")
+            st.plotly_chart(rd_bar(pick("rd_annual","rd_quarterly"), sel_ticker), use_container_width=True)
+        with c8:
+            st.plotly_chart(cash_bar(pick("cash_annual","cash_quarterly"), sel_ticker), use_container_width=True)
 
-        # Recent filings table
+        # ── Peer Comparison ───────────────────────────────────────────────────
+        if show_peers and sel_ticker in peer_map:
+            st.markdown("---")
+            st.markdown("### Peer Comparison")
+            peers = peer_map[sel_ticker]
+
+            with st.spinner("Fetching peer data..."):
+                peer_fins = {}
+                for p in peers:
+                    pf = get_financials(p)
+                    if pf:
+                        peer_fins[p] = pf
+
+            if peer_fins:
+                p1, p2 = st.columns(2)
+                with p1:
+                    rev_peer = {p: pf["revenue"]/1e9 for p, pf in peer_fins.items() if pf.get("revenue")}
+                    st.plotly_chart(peer_bar(rev_peer, "revenue", "Annual Revenue ($B)"), use_container_width=True)
+                with p2:
+                    gm_peer = {p: pf["gross_margin"] for p, pf in peer_fins.items() if pf.get("gross_margin")}
+                    st.plotly_chart(peer_bar(gm_peer, "gross_margin", "Gross Margin (%)"), use_container_width=True)
+
+                p3, p4 = st.columns(2)
+                with p3:
+                    fcf_peer = {p: pf["fcf"]/1e9 for p, pf in peer_fins.items() if pf.get("fcf")}
+                    st.plotly_chart(peer_bar(fcf_peer, "fcf", "Free Cash Flow ($B)"), use_container_width=True)
+                with p4:
+                    nm_peer = {p: pf["net_margin"] for p, pf in peer_fins.items() if pf.get("net_margin")}
+                    st.plotly_chart(peer_bar(nm_peer, "net_margin", "Net Margin (%)"), use_container_width=True)
+
+        # ── Recent filings ────────────────────────────────────────────────────
         st.markdown("---")
         st.markdown("### Recent SEC Filings")
         if filings:
             for f in filings:
-                col1, col2, col3 = st.columns([1, 2, 2])
+                col1, col2, col3 = st.columns([1,2,2])
                 col1.markdown(f"**{f['form']}**")
                 col2.markdown(f"{f['date']}")
                 col3.markdown(f"[View on EDGAR ↗]({f['url']})")
@@ -813,4 +834,4 @@ elif page == "Research":
             st.info("No recent filings found.")
 
         st.markdown("---")
-        st.caption("Data sourced directly from SEC EDGAR XBRL API · Free, no API key required · Updates within hours of new filing · Not financial advice")
+        st.caption("Source: SEC EDGAR XBRL API · Free, no API key · Updates within hours of new filing · Not financial advice")
