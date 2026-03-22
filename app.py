@@ -704,7 +704,8 @@ elif page == "Optimiser":
 
 elif page == "Research":
     from data.sec_fetcher import get_financials, get_recent_filings
-    from charts.research_plots import fmt_b, revenue_bar, net_income_bar, margin_trend, eps_chart, rd_bar, revenue_vs_income
+    from charts.research_plots import (fmt_b, revenue_bar, net_income_bar, margin_trend,
+                                        eps_chart, rd_bar, revenue_vs_income, cash_bar)
 
     st.markdown("# Research")
     st.caption("Live fundamental data pulled directly from SEC EDGAR filings — updates automatically when new 10-K or 10-Q is filed.")
@@ -754,16 +755,19 @@ elif page == "Research":
                 st.info("Revenue data not available.")
 
         with c2:
-            if not fin["net_annual"].empty:
-                st.plotly_chart(net_income_bar(fin["net_annual"], sel_ticker), use_container_width=True)
+            net_df = fin["net_annual"] if period == "Annual" else fin["net_quarterly"]
+            if not net_df.empty:
+                st.plotly_chart(net_income_bar(net_df, sel_ticker), use_container_width=True)
             else:
                 st.info("Net income data not available.")
 
         # Charts — row 2
         c3, c4 = st.columns(2)
         with c3:
-            if not fin["rev_annual"].empty and not fin["gp_annual"].empty:
-                st.plotly_chart(margin_trend(fin["rev_annual"], fin["gp_annual"], sel_ticker), use_container_width=True)
+            rev_df2 = fin["rev_annual"] if period == "Annual" else fin["rev_quarterly"]
+            gp_df   = fin["gp_annual"]  if period == "Annual" else fin["gp_quarterly"]
+            if not rev_df2.empty and not gp_df.empty:
+                st.plotly_chart(margin_trend(rev_df2, gp_df, sel_ticker), use_container_width=True)
             else:
                 st.info("Margin data not available.")
 
@@ -776,13 +780,25 @@ elif page == "Research":
         # Charts — row 3
         c5, c6 = st.columns(2)
         with c5:
-            if not fin["rev_annual"].empty and not fin["net_annual"].empty:
-                st.plotly_chart(revenue_vs_income(fin["rev_annual"], fin["net_annual"], sel_ticker), use_container_width=True)
+            rev_df3 = fin["rev_annual"] if period == "Annual" else fin["rev_quarterly"]
+            net_df2 = fin["net_annual"] if period == "Annual" else fin["net_quarterly"]
+            if not rev_df3.empty and not net_df2.empty:
+                st.plotly_chart(revenue_vs_income(rev_df3, net_df2, sel_ticker), use_container_width=True)
         with c6:
-            if not fin["rd_annual"].empty:
-                st.plotly_chart(rd_bar(fin["rd_annual"], sel_ticker), use_container_width=True)
+            rd_df = fin["rd_annual"] if period == "Annual" else fin.get("rd_quarterly", fin["rd_annual"])
+            if not rd_df.empty:
+                st.plotly_chart(rd_bar(rd_df, sel_ticker), use_container_width=True)
             else:
                 st.info("R&D data not available.")
+
+        # Row 4 — Cash
+        c7, c8 = st.columns(2)
+        with c7:
+            cash_df = fin["cash_annual"] if period == "Annual" else fin.get("cash_quarterly", fin["cash_annual"])
+            if cash_df is not None and not cash_df.empty:
+                st.plotly_chart(cash_bar(cash_df, sel_ticker), use_container_width=True)
+            else:
+                st.info("Cash data not available.")
 
         # Recent filings table
         st.markdown("---")
