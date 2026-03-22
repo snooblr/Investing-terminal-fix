@@ -112,6 +112,25 @@ def eps_chart(df, ticker):
         return go.Figure()
 
 
+def cash_bar(df, ticker):
+    if df is None or df.empty:
+        return go.Figure()
+    try:
+        vals   = list(df["val"].astype(float) / 1e9)
+        labels = list(df["end"].dt.strftime("%Y"))
+        colors = [T["s1"] if i == len(vals)-1 else T["s3"] for i in range(len(vals))]
+        fig = go.Figure(go.Bar(
+            x=labels, y=vals, marker_color=colors,
+            text=[f"${v:.1f}B" for v in vals],
+            textposition="outside", textfont=dict(size=10, color=T["ink_mid"]),
+        ))
+        fig.update_layout(**_base(f"{ticker} — Cash & Equivalents ($B)"),
+                          yaxis_tickprefix="$", yaxis_ticksuffix="B")
+        return fig
+    except Exception:
+        return go.Figure()
+
+
 def rd_bar(df, ticker):
     if df is None or df.empty:
         return go.Figure()
