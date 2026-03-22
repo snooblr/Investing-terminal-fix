@@ -136,7 +136,7 @@ def get_financials(ticker: str) -> dict:
             return None
         return annual.iloc[0]
 
-    def quarterly_series(df, n=8):
+    def quarterly_series(df, n=40):
         """Get last N quarterly figures."""
         if df.empty:
             return pd.DataFrame()
