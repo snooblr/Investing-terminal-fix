@@ -766,30 +766,30 @@ elif page == "Research":
         # ── Row 1: Revenue + Net Income ───────────────────────────────────────
         c1, c2 = st.columns(2)
         with c1:
-            st.plotly_chart(revenue_bar(pick("rev_annual","rev_quarterly"), sel_ticker, period), use_container_width=True)
+            st.plotly_chart(revenue_bar(pick("rev_annual","rev_quarterly"), sel_ticker, period), use_container_width=True, key="res_rev")
         with c2:
-            st.plotly_chart(net_income_bar(pick("net_annual","net_quarterly"), sel_ticker), use_container_width=True)
+            st.plotly_chart(net_income_bar(pick("net_annual","net_quarterly"), sel_ticker), use_container_width=True, key="res_net")
 
         # ── Row 2: FCF + Revenue Growth ───────────────────────────────────────
         c3, c4 = st.columns(2)
         with c3:
-            st.plotly_chart(fcf_bar(fin.get("fcf_annual", pd.DataFrame()), sel_ticker), use_container_width=True)
+            st.plotly_chart(fcf_bar(fin.get("fcf_annual", pd.DataFrame()), sel_ticker), use_container_width=True, key="res_fcf")
         with c4:
-            st.plotly_chart(growth_bar(pick("rev_growth_annual","rev_growth_quarterly"), sel_ticker, period), use_container_width=True)
+            st.plotly_chart(growth_bar(pick("rev_growth_annual","rev_growth_quarterly"), sel_ticker, period), use_container_width=True, key="res_growth")
 
         # ── Row 3: Margin stack + EPS ─────────────────────────────────────────
         c5, c6 = st.columns(2)
         with c5:
-            st.plotly_chart(margin_stack(fin, sel_ticker), use_container_width=True)
+            st.plotly_chart(margin_stack(fin, sel_ticker), use_container_width=True, key="res_margin")
         with c6:
-            st.plotly_chart(eps_chart(fin.get("eps_quarterly", pd.DataFrame()), sel_ticker), use_container_width=True)
+            st.plotly_chart(eps_chart(fin.get("eps_quarterly", pd.DataFrame()), sel_ticker), use_container_width=True, key="res_eps")
 
         # ── Row 4: R&D + Cash ─────────────────────────────────────────────────
         c7, c8 = st.columns(2)
         with c7:
-            st.plotly_chart(rd_bar(pick("rd_annual","rd_quarterly"), sel_ticker), use_container_width=True)
+            st.plotly_chart(rd_bar(pick("rd_annual","rd_quarterly"), sel_ticker), use_container_width=True, key="res_rd")
         with c8:
-            st.plotly_chart(cash_bar(pick("cash_annual","cash_quarterly"), sel_ticker), use_container_width=True)
+            st.plotly_chart(cash_bar(pick("cash_annual","cash_quarterly"), sel_ticker), use_container_width=True, key="res_cash")
 
         # ── Peer Comparison ───────────────────────────────────────────────────
         if show_peers and sel_ticker in peer_map:
@@ -808,18 +808,18 @@ elif page == "Research":
                 p1, p2 = st.columns(2)
                 with p1:
                     rev_peer = {p: pf["revenue"]/1e9 for p, pf in peer_fins.items() if pf.get("revenue")}
-                    st.plotly_chart(peer_bar(rev_peer, "revenue", "Annual Revenue ($B)"), use_container_width=True)
+                    st.plotly_chart(peer_bar(rev_peer, "revenue", "Annual Revenue ($B)"), use_container_width=True, key="peer_rev")
                 with p2:
                     gm_peer = {p: pf["gross_margin"] for p, pf in peer_fins.items() if pf.get("gross_margin")}
-                    st.plotly_chart(peer_bar(gm_peer, "gross_margin", "Gross Margin (%)"), use_container_width=True)
+                    st.plotly_chart(peer_bar(gm_peer, "gross_margin", "Gross Margin (%)"), use_container_width=True, key="peer_gm")
 
                 p3, p4 = st.columns(2)
                 with p3:
                     fcf_peer = {p: pf["fcf"]/1e9 for p, pf in peer_fins.items() if pf.get("fcf")}
-                    st.plotly_chart(peer_bar(fcf_peer, "fcf", "Free Cash Flow ($B)"), use_container_width=True)
+                    st.plotly_chart(peer_bar(fcf_peer, "fcf", "Free Cash Flow ($B)"), use_container_width=True, key="peer_fcf")
                 with p4:
                     nm_peer = {p: pf["net_margin"] for p, pf in peer_fins.items() if pf.get("net_margin")}
-                    st.plotly_chart(peer_bar(nm_peer, "net_margin", "Net Margin (%)"), use_container_width=True)
+                    st.plotly_chart(peer_bar(nm_peer, "net_margin", "Net Margin (%)"), use_container_width=True, key="peer_nm")
 
         # ── Recent filings ────────────────────────────────────────────────────
         st.markdown("---")
