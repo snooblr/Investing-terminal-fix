@@ -703,8 +703,8 @@ elif page == "Optimiser":
 # ═══════════════════════════════════════════════════════════════════════════════
 
 elif page == "Research":
-    from data.sec_fetcher import get_financials, get_recent_filings, fmt_b
-    from charts.research_plots import (revenue_bar, net_income_bar, margin_trend,
+    from data.sec_fetcher import get_financials, get_recent_filings
+    from charts.research_plots import (fmt_b, revenue_bar, net_income_bar, margin_trend,
                                         eps_chart, rd_bar, revenue_vs_income)
 
     st.markdown("# Research")
