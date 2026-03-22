@@ -703,9 +703,7 @@ elif page == "Optimiser":
 # ═══════════════════════════════════════════════════════════════════════════════
 
 elif page == "Research":
-    from data.sec_fetcher import get_financials, get_recent_filings, fmt_b
-    from charts.research_plots import (revenue_bar, net_income_bar, margin_trend,
-                                        eps_chart, rd_bar, revenue_vs_income)
+    from data.sec_fetcher import get_financials, get_recent_filings
 
     st.markdown("# Research")
     st.caption("Live fundamental data pulled directly from SEC EDGAR filings — updates automatically when new 10-K or 10-Q is filed.")
