@@ -93,7 +93,11 @@ def get_financials(ticker: str) -> dict:
 
     net   = extract_metric(facts, "NetIncomeLoss")
     gp    = extract_metric(facts, "GrossProfit")
+    if gp.empty:
+        gp = extract_metric(facts, "GrossMargin")
     op    = extract_metric(facts, "OperatingIncomeLoss")
+    if op.empty:
+        op = extract_metric(facts, "IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest")
     rd    = extract_metric(facts, "ResearchAndDevelopmentExpense")
     eps   = extract_metric(facts, "EarningsPerShareBasic", unit="USD/shares")
     assets= extract_metric(facts, "Assets")
